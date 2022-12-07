@@ -1,0 +1,3 @@
+[submodule "blog_app_protos"]
+	path = blog_app_protos
+	url = git@github.com:ibrat-muslim/blog_app_protos.git

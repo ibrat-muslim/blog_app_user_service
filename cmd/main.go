@@ -3,12 +3,17 @@ package main
 import (
 	"fmt"
 	"log"
+	"net"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 
 	"github.com/ibrat-muslim/blog_app_user_service/config"
+	pb "github.com/ibrat-muslim/blog_app_user_service/genproto/user_service"
+	"github.com/ibrat-muslim/blog_app_user_service/service"
 	"github.com/ibrat-muslim/blog_app_user_service/storage"
 )
 
@@ -36,8 +41,21 @@ func main() {
 
 	inMemory := storage.NewInMemoryStorage(rdb)
 
-	strg = strg
-	inMemory = inMemory
+	userService := service.NewUserService(strg, inMemory)
 
-	log.Print("Server stopped")
+	lis, err := net.Listen("tcp", cfg.GrpcPort)
+	if err != nil {
+		log.Fatalf("Error while listening: %v", err)
+	}
+
+	s := grpc.NewServer()
+	reflection.Register(s)
+
+	pb.RegisterUserServiceServer(s, userService)
+
+	log.Println("Grpc server started in port", cfg.GrpcPort)
+
+	if err := s.Serve(lis); err != nil {
+		log.Fatalf("Error while listening: %v", err)
+	}
 }
