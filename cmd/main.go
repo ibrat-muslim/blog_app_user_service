@@ -38,20 +38,21 @@ func main() {
 	})
 
 	strg := storage.NewStoragePg(psqlConn)
-
 	inMemory := storage.NewInMemoryStorage(rdb)
 
 	userService := service.NewUserService(strg, inMemory)
+	authService := service.NewAuthService(strg, inMemory)
 
 	lis, err := net.Listen("tcp", cfg.GrpcPort)
 	if err != nil {
-		log.Fatalf("Error while listening: %v", err)
+		log.Fatalf("failed to listen: %v", err)
 	}
 
 	s := grpc.NewServer()
 	reflection.Register(s)
 
 	pb.RegisterUserServiceServer(s, userService)
+	pb.RegisterAuthServiceServer(s, authService)
 
 	log.Println("Grpc server started in port", cfg.GrpcPort)
 

@@ -40,7 +40,17 @@ func TestGetUser(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, user)
 
-	deleteUser(user.ID, t)
+	deleteUser(u.ID, t)
+}
+
+func TestGetByEmail(t *testing.T) {
+	u := createUser(t)
+
+	user, err := strg.User().GetByEmail(u.Email)
+	require.NoError(t, err)
+	require.NotEmpty(t, user)
+
+	deleteUser(u.ID, t)
 }
 
 func TestGetAllUsers(t *testing.T) {
@@ -68,7 +78,21 @@ func TestUpdateUser(t *testing.T) {
 	u.Password = faker.Password()
 	u.Type = repo.UserTypeUser
 
-	err := strg.User().Update(u)
+	user, err := strg.User().Update(u)
+	require.NoError(t, err)
+	require.NotEmpty(t, user)
+
+	deleteUser(user.ID, t)
+}
+
+func TestUpdatePassword(t *testing.T) {
+	u := createUser(t)
+
+	err := strg.User().UpdatePassword(&repo.UpdatePassword{
+		UserID: u.ID,
+		Password: faker.Password(),
+	})
+
 	require.NoError(t, err)
 
 	deleteUser(u.ID, t)

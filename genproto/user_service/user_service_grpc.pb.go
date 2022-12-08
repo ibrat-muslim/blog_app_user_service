@@ -26,6 +26,7 @@ type UserServiceClient interface {
 	Create(ctx context.Context, in *User, opts ...grpc.CallOption) (*User, error)
 	Get(ctx context.Context, in *IdRequest, opts ...grpc.CallOption) (*User, error)
 	GetAll(ctx context.Context, in *GetAllUsersRequest, opts ...grpc.CallOption) (*GetAllUsersResponse, error)
+	GetByEmail(ctx context.Context, in *EmailRequest, opts ...grpc.CallOption) (*User, error)
 	Update(ctx context.Context, in *User, opts ...grpc.CallOption) (*User, error)
 	Delete(ctx context.Context, in *IdRequest, opts ...grpc.CallOption) (*empty.Empty, error)
 }
@@ -65,6 +66,15 @@ func (c *userServiceClient) GetAll(ctx context.Context, in *GetAllUsersRequest, 
 	return out, nil
 }
 
+func (c *userServiceClient) GetByEmail(ctx context.Context, in *EmailRequest, opts ...grpc.CallOption) (*User, error) {
+	out := new(User)
+	err := c.cc.Invoke(ctx, "/genproto.UserService/GetByEmail", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *userServiceClient) Update(ctx context.Context, in *User, opts ...grpc.CallOption) (*User, error) {
 	out := new(User)
 	err := c.cc.Invoke(ctx, "/genproto.UserService/Update", in, out, opts...)
@@ -90,6 +100,7 @@ type UserServiceServer interface {
 	Create(context.Context, *User) (*User, error)
 	Get(context.Context, *IdRequest) (*User, error)
 	GetAll(context.Context, *GetAllUsersRequest) (*GetAllUsersResponse, error)
+	GetByEmail(context.Context, *EmailRequest) (*User, error)
 	Update(context.Context, *User) (*User, error)
 	Delete(context.Context, *IdRequest) (*empty.Empty, error)
 	mustEmbedUnimplementedUserServiceServer()
@@ -107,6 +118,9 @@ func (UnimplementedUserServiceServer) Get(context.Context, *IdRequest) (*User, e
 }
 func (UnimplementedUserServiceServer) GetAll(context.Context, *GetAllUsersRequest) (*GetAllUsersResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetAll not implemented")
+}
+func (UnimplementedUserServiceServer) GetByEmail(context.Context, *EmailRequest) (*User, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetByEmail not implemented")
 }
 func (UnimplementedUserServiceServer) Update(context.Context, *User) (*User, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Update not implemented")
@@ -181,6 +195,24 @@ func _UserService_GetAll_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_GetByEmail_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(EmailRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).GetByEmail(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/genproto.UserService/GetByEmail",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).GetByEmail(ctx, req.(*EmailRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _UserService_Update_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(User)
 	if err := dec(in); err != nil {
@@ -235,6 +267,10 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetAll",
 			Handler:    _UserService_GetAll_Handler,
+		},
+		{
+			MethodName: "GetByEmail",
+			Handler:    _UserService_GetByEmail_Handler,
 		},
 		{
 			MethodName: "Update",

@@ -13,9 +13,6 @@ DB_URL=postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@$(POSTGRES_HOST):$(POS
 print:
 	echo "$(DB_URL)"
 
-swag-init:
-	swag init -g api/api.go -o api/docs
-
 start:
 	go run cmd/main.go
 
@@ -34,5 +31,12 @@ migratedown1:
 proto-gen:
 	rm -rf genproto
 	./scripts/gen-proto.sh ${CURRENT_DIR}
+
+pull-sub-module:
+	git submodule update --init --recursive
+
+update-sub-module:
+	git submodule update --remote --merge
+
 
 .PHONY:	start migrateup migratedown

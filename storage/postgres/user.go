@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 
+	"github.com/ibrat-muslim/blog_app_user_service/pkg/utils"
 	"github.com/ibrat-muslim/blog_app_user_service/storage/repo"
 	"github.com/jmoiron/sqlx"
 )
@@ -38,12 +39,12 @@ func (ur *userRepo) Create(user *repo.User) (*repo.User, error) {
 		query,
 		user.FirstName,
 		user.LastName,
-		user.PhoneNumber,
+		utils.NullString(user.PhoneNumber),
 		user.Email,
-		user.Gender,
+		utils.NullString(user.Gender),
 		user.Password,
-		user.Username,
-		user.ProfileImageUrl,
+		utils.NullString(user.Username),
+		utils.NullString(user.ProfileImageUrl),
 		user.Type,
 	)
 
@@ -51,7 +52,6 @@ func (ur *userRepo) Create(user *repo.User) (*repo.User, error) {
 		&user.ID,
 		&user.CreatedAt,
 	)
-
 	if err != nil {
 		return nil, err
 	}
@@ -60,6 +60,11 @@ func (ur *userRepo) Create(user *repo.User) (*repo.User, error) {
 }
 
 func (ur *userRepo) Get(id int64) (*repo.User, error) {
+	var (
+		result                                         repo.User
+		phoneNumber, gender, username, profileImageUrl sql.NullString
+	)
+
 	query := `
 		SELECT
 			id,
@@ -77,18 +82,38 @@ func (ur *userRepo) Get(id int64) (*repo.User, error) {
 		WHERE id = $1
 	`
 
-	var result repo.User
-
-	err := ur.db.Get(&result, query, id)
-
+	row := ur.db.QueryRow(query, id)
+	err := row.Scan(
+		&result.ID,
+		&result.FirstName,
+		&result.LastName,
+		&phoneNumber,
+		&result.Email,
+		&gender,
+		&result.Password,
+		&username,
+		&profileImageUrl,
+		&result.Type,
+		&result.CreatedAt,
+	)
 	if err != nil {
 		return nil, err
 	}
+
+	result.PhoneNumber = phoneNumber.String
+	result.Gender = gender.String
+	result.Username = username.String
+	result.ProfileImageUrl = profileImageUrl.String
 
 	return &result, nil
 }
 
 func (ur *userRepo) GetByEmail(email string) (*repo.User, error) {
+	var (
+		result                                         repo.User
+		phoneNumber, gender, username, profileImageUrl sql.NullString
+	)
+
 	query := `
 		SELECT
 			id,
@@ -106,13 +131,28 @@ func (ur *userRepo) GetByEmail(email string) (*repo.User, error) {
 		WHERE email = $1
 	`
 
-	var result repo.User
-
-	err := ur.db.Get(&result, query, email)
-
+	row := ur.db.QueryRow(query, email)
+	err := row.Scan(
+		&result.ID,
+		&result.FirstName,
+		&result.LastName,
+		&phoneNumber,
+		&result.Email,
+		&gender,
+		&result.Password,
+		&username,
+		&profileImageUrl,
+		&result.Type,
+		&result.CreatedAt,
+	)
 	if err != nil {
 		return nil, err
 	}
+
+	result.PhoneNumber = phoneNumber.String
+	result.Gender = gender.String
+	result.Username = username.String
+	result.ProfileImageUrl = profileImageUrl.String
 
 	return &result, nil
 }
@@ -156,16 +196,47 @@ func (ur *userRepo) GetAll(params *repo.GetUsersParams) (*repo.GetUsersResult, e
 		ORDER BY created_at DESC
 		` + limit
 
-	err := ur.db.Select(&result.Users, query)
-
+	rows, err := ur.db.Query(query)
 	if err != nil {
 		return nil, err
 	}
 
+	defer rows.Close()
+
+	for rows.Next() {
+		var (
+			user                                           repo.User
+			phoneNumber, gender, username, profileImageUrl sql.NullString
+		)
+
+		err := rows.Scan(
+			&user.ID,
+			&user.FirstName,
+			&user.LastName,
+			&phoneNumber,
+			&user.Email,
+			&gender,
+			&user.Password,
+			&username,
+			&profileImageUrl,
+			&user.Type,
+			&user.CreatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		user.PhoneNumber = phoneNumber.String
+		user.Gender = gender.String
+		user.Username = username.String
+		user.ProfileImageUrl = profileImageUrl.String
+
+		result.Users = append(result.Users, &user)
+	}
+
 	queryCount := `SELECT count(1) FROM users ` + filter
 
-	err = ur.db.Get(&result.Count, queryCount)
-
+	err = ur.db.QueryRow(queryCount).Scan(&result.Count)
 	if err != nil {
 		return nil, err
 	}
@@ -173,63 +244,51 @@ func (ur *userRepo) GetAll(params *repo.GetUsersParams) (*repo.GetUsersResult, e
 	return &result, nil
 }
 
-func (ur *userRepo) Update(user *repo.User) error {
+func (ur *userRepo) Update(user *repo.User) (*repo.User, error) {
 	query := `
 		UPDATE users SET
 			first_name = $1,
 			last_name = $2,
 			phone_number = $3,
-			email = $4,
-			gender = $5,
-			password = $6,
-			username = $7,
-			profile_image_url = $8,
-			type = $9
-		WHERE id = $10
+			gender = $4,
+			username = $5,
+			profile_image_url = $6
+		WHERE id = $7
+		RETURNING email, type, created_at
 	`
 
-	result, err := ur.db.Exec(
+	row := ur.db.QueryRow(
 		query,
 		user.FirstName,
 		user.LastName,
-		user.PhoneNumber,
-		user.Email,
-		user.Gender,
-		user.Password,
-		user.Username,
-		user.ProfileImageUrl,
-		user.Type,
+		utils.NullString(user.PhoneNumber),
+		utils.NullString(user.Gender),
+		utils.NullString(user.Username),
+		utils.NullString(user.ProfileImageUrl),
 		user.ID,
 	)
 
+	err := row.Scan(
+		&user.Email,
+		&user.Type,
+		&user.CreatedAt,
+	)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	rowsCount, err := result.RowsAffected()
-
-	if err != nil {
-		return err
-	}
-
-	if rowsCount == 0 {
-		return sql.ErrNoRows
-	}
-
-	return nil
+	return user, nil
 }
 
 func (ur *userRepo) Delete(id int64) error {
 	query := `DELETE FROM users WHERE id = $1`
 
 	resutl, err := ur.db.Exec(query, id)
-
 	if err != nil {
 		return err
 	}
 
 	rowsCount, err := resutl.RowsAffected()
-
 	if err != nil {
 		return err
 	}
@@ -249,7 +308,6 @@ func (ur *userRepo) UpdatePassword(req *repo.UpdatePassword) error {
 		req.Password,
 		req.UserID,
 	)
-
 	if err != nil {
 		return err
 	}
