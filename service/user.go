@@ -44,7 +44,7 @@ func (s *UserService) Create(ctx context.Context, req *pb.User) (*pb.User, error
 	return parseUserModel(user), nil
 }
 
-func (s *UserService) Get(ctx context.Context, req *pb.IdRequest) (*pb.User, error) {
+func (s *UserService) Get(ctx context.Context, req *pb.GetUserRequest) (*pb.User, error) {
 	user, err := s.storage.User().Get(req.Id)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Internal server error: %v", err)
@@ -101,7 +101,7 @@ func (s *UserService) Update(ctx context.Context, req *pb.User) (*pb.User, error
 	return parseUserModel(user), nil
 }
 
-func (s *UserService) Delete(ctx context.Context, req *pb.IdRequest) (*emptypb.Empty, error) {
+func (s *UserService) Delete(ctx context.Context, req *pb.GetUserRequest) (*emptypb.Empty, error) {
 	err := s.storage.User().Delete(req.Id)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Internal server error: %v", err)
