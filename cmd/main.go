@@ -11,8 +11,10 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
-	"github.com/ibrat-muslim/blog_app_user_service/config"
 	pb "github.com/ibrat-muslim/blog_app_user_service/genproto/user_service"
+	grpcPkg "github.com/ibrat-muslim/blog_app_user_service/pkg/grpc_client"
+
+	"github.com/ibrat-muslim/blog_app_user_service/config"
 	"github.com/ibrat-muslim/blog_app_user_service/service"
 	"github.com/ibrat-muslim/blog_app_user_service/storage"
 )
@@ -40,8 +42,13 @@ func main() {
 	strg := storage.NewStoragePg(psqlConn)
 	inMemory := storage.NewInMemoryStorage(rdb)
 
+	grpcConn, err := grpcPkg.New(&cfg)
+	if err != nil {
+		log.Fatalf("failed to get grpc connections: %v", err)
+	}
+
 	userService := service.NewUserService(strg, inMemory)
-	authService := service.NewAuthService(strg, inMemory)
+	authService := service.NewAuthService(strg, inMemory, grpcConn, &cfg)
 
 	lis, err := net.Listen("tcp", cfg.GrpcPort)
 	if err != nil {
