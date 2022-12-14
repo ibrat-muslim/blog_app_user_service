@@ -2,7 +2,9 @@ package service
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -143,6 +145,91 @@ func (s *AuthService) Verify(ctx context.Context, req *pbu.VerifyRequest) (*pbu.
 		LastName:    result.LastName,
 		Email:       result.Email,
 		Username:    result.Username,
+		Type:        result.Type,
+		CreatedAt:   result.CreatedAt.Format(time.RFC3339),
+		AccessToken: token,
+	}, nil
+}
+
+func (s *AuthService) Login(ctx context.Context, req *pbu.LoginRequest) (*pbu.AuthResponse, error) {
+	result, err := s.storage.User().GetByEmail(req.Email)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, status.Errorf(codes.Internal, "Wrong email or password: %v", err)
+		}
+
+		return nil, status.Errorf(codes.Internal, "Internal server error: %v", err)
+	}
+
+	err = utils.CheckPassword(req.Password, result.Password)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Wrong email or password: %v", err)
+	}
+
+	token, _, err := utils.CreateToken(s.cfg, &utils.TokenParams{
+		UserID:   result.ID,
+		UserType: result.Type,
+		Email:    result.Email,
+		Duration: time.Hour * 24,
+	})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Internal server error: %v", err)
+	}
+
+	return &pbu.AuthResponse{
+		Id:          result.ID,
+		FirstName:   result.FirstName,
+		LastName:    result.LastName,
+		Username:    result.Username,
+		Email:       result.Email,
+		Type:        result.Type,
+		CreatedAt:   result.CreatedAt.Format(time.RFC3339),
+		AccessToken: token,
+	}, nil
+}
+
+func (s *AuthService) ForgotPassword(ctx context.Context, req *pbu.ForgotPasswordRequest) (*emptypb.Empty, error) {
+	go func() {
+		err := s.sendVerificationCode(ForgotPasswordKey, req.Email)
+		if err != nil {
+			fmt.Printf("failed to send verification code: %v", err)
+		}
+	}()
+
+	return &emptypb.Empty{}, nil
+}
+
+func (s *AuthService) VerifyForgotPassword(ctx context.Context, req *pbu.VerifyRequest) (*pbu.AuthResponse, error) {
+	code, err := s.inMemory.Get(ForgotPasswordKey + req.Email)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Code expired: %v", err)
+	}
+
+	if req.Code != code {
+		return nil, status.Errorf(codes.Internal, "Incorrect code: %v", err)
+	}
+
+	result, err := s.storage.User().GetByEmail(req.Email)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Internal server error: %v", err)
+	}
+
+	token, _, err := utils.CreateToken(s.cfg, &utils.TokenParams{
+		UserID:   result.ID,
+		UserType: result.Type,
+		Email:    result.Email,
+		Duration: time.Minute * 30,
+	})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Internal server error: %v", err)
+	}
+
+	return &pbu.AuthResponse{
+		Id:          result.ID,
+		FirstName:   result.FirstName,
+		LastName:    result.LastName,
+		Username:    result.Username,
+		Email:       result.Email,
 		Type:        result.Type,
 		CreatedAt:   result.CreatedAt.Format(time.RFC3339),
 		AccessToken: token,
