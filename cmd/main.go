@@ -13,6 +13,7 @@ import (
 
 	pb "github.com/ibrat-muslim/blog_app_user_service/genproto/user_service"
 	grpcPkg "github.com/ibrat-muslim/blog_app_user_service/pkg/grpc_client"
+	"github.com/ibrat-muslim/blog_app_user_service/pkg/logger"
 
 	"github.com/ibrat-muslim/blog_app_user_service/config"
 	"github.com/ibrat-muslim/blog_app_user_service/service"
@@ -47,8 +48,10 @@ func main() {
 		log.Fatalf("failed to get grpc connections: %v", err)
 	}
 
-	userService := service.NewUserService(strg, inMemory)
-	authService := service.NewAuthService(strg, inMemory, grpcConn, &cfg)
+	logger := logger.New()
+
+	userService := service.NewUserService(strg, inMemory, logger)
+	authService := service.NewAuthService(strg, inMemory, grpcConn, &cfg, logger)
 
 	lis, err := net.Listen("tcp", cfg.GrpcPort)
 	if err != nil {

@@ -28,6 +28,7 @@ type AuthServiceClient interface {
 	Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*AuthResponse, error)
 	ForgotPassword(ctx context.Context, in *ForgotPasswordRequest, opts ...grpc.CallOption) (*empty.Empty, error)
 	VerifyForgotPassword(ctx context.Context, in *VerifyRequest, opts ...grpc.CallOption) (*AuthResponse, error)
+	VerifyToken(ctx context.Context, in *VerifyTokenRequest, opts ...grpc.CallOption) (*AuthPayload, error)
 }
 
 type authServiceClient struct {
@@ -83,6 +84,15 @@ func (c *authServiceClient) VerifyForgotPassword(ctx context.Context, in *Verify
 	return out, nil
 }
 
+func (c *authServiceClient) VerifyToken(ctx context.Context, in *VerifyTokenRequest, opts ...grpc.CallOption) (*AuthPayload, error) {
+	out := new(AuthPayload)
+	err := c.cc.Invoke(ctx, "/genproto.AuthService/VerifyToken", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AuthServiceServer is the server API for AuthService service.
 // All implementations must embed UnimplementedAuthServiceServer
 // for forward compatibility
@@ -92,6 +102,7 @@ type AuthServiceServer interface {
 	Login(context.Context, *LoginRequest) (*AuthResponse, error)
 	ForgotPassword(context.Context, *ForgotPasswordRequest) (*empty.Empty, error)
 	VerifyForgotPassword(context.Context, *VerifyRequest) (*AuthResponse, error)
+	VerifyToken(context.Context, *VerifyTokenRequest) (*AuthPayload, error)
 	mustEmbedUnimplementedAuthServiceServer()
 }
 
@@ -113,6 +124,9 @@ func (UnimplementedAuthServiceServer) ForgotPassword(context.Context, *ForgotPas
 }
 func (UnimplementedAuthServiceServer) VerifyForgotPassword(context.Context, *VerifyRequest) (*AuthResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method VerifyForgotPassword not implemented")
+}
+func (UnimplementedAuthServiceServer) VerifyToken(context.Context, *VerifyTokenRequest) (*AuthPayload, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method VerifyToken not implemented")
 }
 func (UnimplementedAuthServiceServer) mustEmbedUnimplementedAuthServiceServer() {}
 
@@ -217,6 +231,24 @@ func _AuthService_VerifyForgotPassword_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AuthService_VerifyToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(VerifyTokenRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).VerifyToken(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/genproto.AuthService/VerifyToken",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).VerifyToken(ctx, req.(*VerifyTokenRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AuthService_ServiceDesc is the grpc.ServiceDesc for AuthService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -243,6 +275,10 @@ var AuthService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "VerifyForgotPassword",
 			Handler:    _AuthService_VerifyForgotPassword_Handler,
+		},
+		{
+			MethodName: "VerifyToken",
+			Handler:    _AuthService_VerifyToken_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
