@@ -262,3 +262,20 @@ func (s *AuthService) VerifyToken(ctx context.Context, req *pbu.VerifyTokenReque
 		HasPermission: hasPermission,
 	}, nil
 }
+
+func (s *UserService) UpdatePassword(ctx context.Context, req *pbu.UpdatePasswordRequest) (*emptypb.Empty, error) {
+	hashPassword, err := utils.HashPassword(req.Password)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to hash password: %v", err)
+	}
+
+	err = s.storage.User().UpdatePassword(&repo.UpdatePassword{
+		UserID:   req.UserId,
+		Password: hashPassword,
+	})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to update password: %v", err)
+	}
+
+	return &emptypb.Empty{}, nil
+}
